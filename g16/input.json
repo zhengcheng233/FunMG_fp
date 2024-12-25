@@ -1,0 +1,2 @@
+{"jparm": {"task": "t1", "input": "input.com", "method": "b3lyp EmpiricalDispersion=GD3BJ", "basis": "3-21g", "charge": 0, "multiplicity": 1}, "mparm": {"nproc": 24, "mem": "60GB"}}
+
