@@ -5,3 +5,4 @@ logs
 **.pyc
 nohup.out
 *.ipynb
+.vscode
