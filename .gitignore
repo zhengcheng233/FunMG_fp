@@ -1,0 +1,7 @@
+.venv
+.env
+logs
+*.log
+**.pyc
+nohup.out
+*.ipynb

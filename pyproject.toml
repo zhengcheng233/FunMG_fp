@@ -1,0 +1,25 @@
+[project]
+name = "funmg-dft"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic==2.8.0",
+    "loguru==0.7.2",
+    "httpx==0.27.2",
+    "ase==3.23.0",
+    "fchic==0.1.1",
+]
+
+[tool.uv.pip]
+index-url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple"
+
+[tool.ruff]
+ignore = ["E501", "E401", "E402", "F403", "F401","F841" ]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["E402", "F401", "E401"]
+
+[tool.uv]
+index-url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple"
