@@ -53,7 +53,7 @@ def worker():
             count = count + 1
 
             # 获取任务
-            task = acquire_task(["Funmg"])
+            task = acquire_task(["QC_Calculator"])
             if not task:
                 time.sleep(10)
             else:

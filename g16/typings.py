@@ -113,8 +113,6 @@ class Structure(BaseModel):
 
         return cls(atoms=atoms)
 
-    
-
     def to_str_lines(self) -> str:
         atom_str_list = [
             f"{atom.symbol:<2}  {atom.x:12.6f}  {atom.y:12.6f}  {atom.z:12.6f}"

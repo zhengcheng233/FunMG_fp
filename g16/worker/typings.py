@@ -23,7 +23,7 @@ class TaskInCfg(BaseModel):
 class TaskIn(BaseModel):
     name: str
     cfg: TaskInCfg
-    app_id: AppId = 'Funmg'
+    app_id: AppId = 'QC_Calculator'
 
 class TaskOut(TaskIn):
     owner: str
