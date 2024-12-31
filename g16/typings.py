@@ -6,6 +6,7 @@ from loguru import logger
 import fchic 
 from ase.data import chemical_symbols, atomic_numbers
 import numpy as np
+import subprocess
 
 JobType = Literal['s0','s1','t1','absorption_spec','emission_spec']
 
@@ -138,7 +139,7 @@ class G16Input(BaseModel):
             f.write(content)
 
     @classmethod
-    def gen_input_file(cls, params:Params, path_prefix:Path=path_prefix, fchk_name:str='')->bool:
+    def gen_input_file_and_return_self(cls, params:Params, path_prefix:Path=path_prefix, fchk_name:str='') -> "G16Input":
     
         if fchk_name:
             fchk_path = Path(path_prefix, fchk_name)
@@ -149,7 +150,11 @@ class G16Input(BaseModel):
 
         g16_input = cls( params=params, structure=structure )
         g16_input.to_file(path_prefix)
-        return True 
+        return g16_input
+    
+    def run(self):
+        result = subprocess.run(['g16', f'{self.params.title}.com'],capture_output=True, text=True)
+        result = subprocess.run(['formchk', f'{self.params.title}.chk', f'{self.params.title}.fchk'], capture_output=True, text=True)
 
 
 

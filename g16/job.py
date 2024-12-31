@@ -31,9 +31,8 @@ def run_fp(params:Params, path_prefix:Path=path_prefix)->Any:
         try:
             params_cp = copy.deepcopy(params)
             params_cp.opt = True
-            G16Input.gen_input_file(params_cp, path_prefix)
-            result = subprocess.run(['g16', 's0.com'],capture_output=True, text=True)
-            result = subprocess.run(['formchk', 's0.chk', 's0.fchk'], capture_output=True, text=True)
+            g16_job=G16Input.gen_input_file_and_return_self(params_cp, path_prefix)
+            g16_job.run()
         except Exception as e:
             logging.error(f'Error running s0: {e}')
 
@@ -43,33 +42,29 @@ def run_fp(params:Params, path_prefix:Path=path_prefix)->Any:
             params_cp = copy.deepcopy(params)
             params_cp.title = 's0'
             params_cp.opt = True
-            G16Input.gen_input_file(params, path_prefix)
-            result = subprocess.run(['g16', 's0.com'], capture_output=True, text=True)
-            result = subprocess.run(['formchk', 's0.chk', 's0.fchk'], capture_output=True, text=True)
+            g16_job=G16Input.gen_input_file_and_return_self(params, path_prefix)
+            g16_job.run()
 
             # 运行s0下的td单点计算
             params_cp = copy.deepcopy(params)
             params_cp.td = 30
             params_cp.title = 's0_td_single'
-            G16Input.gen_input_file(params_cp, path_prefix, fchk_name='s0.fchk')
-            result = subprocess.run(['g16', 's0_td_single.com'], capture_output=True, text=True)
-            result = subprocess.run(['formchk', 's0_td_single.chk'], capture_output=True, text=True)
+            g16_job=G16Input.gen_input_file_and_return_self(params_cp, path_prefix, fchk_name='s0.fchk')
+            g16_job.run()
 
             # 运行s1结构优化
             params_cp = copy.deepcopy(params)
             params_cp.opt = True
             params_cp.td = 30
             params_cp.title = 's1'
-            G16Input.gen_input_file(params_cp, path_prefix,fchk_name='s0.fchk')
-            result = subprocess.run(['g16', 's1.com'], capture_output=True, text=True)
-            result = subprocess.run(['formchk', 's1.chk'], capture_output=True, text=True)
+            g16_job=G16Input.gen_input_file_and_return_self(params_cp, path_prefix,fchk_name='s0.fchk')
+            g16_job.run()
 
             # 运行s1态结构优化极小点下，运行s0的单点计算
             params_cp = copy.deepcopy(params)
             params_cp.title = 's1_ground_single'
-            G16Input.gen_input_file(params_cp, path_prefix, fchk_name='s1.fchk')
-            result = subprocess.run(['g16', 's1_ground_single.com'], capture_output=True, text=True)
-            result = subprocess.run(['formchk', 's1_ground_single.chk'], capture_output=True, text=True)
+            g16_job=G16Input.gen_input_file_and_return_self(params_cp, path_prefix, fchk_name='s1.fchk')
+            g16_job.run()
         except Exception as e:
             logging.error(f'Error running s1: {e}')
 
@@ -79,33 +74,29 @@ def run_fp(params:Params, path_prefix:Path=path_prefix)->Any:
             params_cp = copy.deepcopy(params)
             params_cp.title = 's0'
             params_cp.opt = True
-            G16Input.gen_input_file(params_cp, path_prefix)
-            result = subprocess.run(['g16', 's0.com'], capture_output=True, text=True)
-            result = subprocess.run(['formchk', 's0.chk', 's0.fchk'], capture_output=True, text=True)
+            g16_job=G16Input.gen_input_file_and_return_self(params_cp, path_prefix)
+            g16_job.run()
             
             # s0极小点结构坐标下，计算t1态
             params_cp = copy.deepcopy(params)
             params_cp.title = 't1_td_singlet'
             params_cp.multiplicity = 3 
-            G16Input.gen_input_file(params_cp, path_prefix, fchk_name='s0.fchk')
-            result = subprocess.run(['g16', 't1_td_singlet.com'], capture_output=True, text=True)
-            result = subprocess.run(['formchk', 't1_td_singlet.chk', 't1_td_singlet.fchk'], capture_output=True, text=True)
-            
+            g16_job=G16Input.gen_input_file_and_return_self(params_cp, path_prefix, fchk_name='s0.fchk')
+            g16_job.run()
+
             # t1态下结构优化
             params_cp = copy.deepcopy(params)
             params_cp.title = 't1'
             params_cp.multiplicity = 3 
             params_cp.opt = True
-            G16Input.gen_input_file(params_cp, path_prefix, fchk_name='s0.fchk')
-            result = subprocess.run(['g16', 't1.com'], capture_output=True, text=True)
-            result = subprocess.run(['formchk', 't1.chk', 't1.fchk'], capture_output=True, text=True)
+            g16_job=G16Input.gen_input_file_and_return_self(params_cp, path_prefix, fchk_name='s0.fchk')
+            g16_job.run()
 
             # t1态结构优化极小点下，运行s0单点计算
             params_cp = copy.deepcopy(params)
             params_cp.title = 't1_ground_single'
-            G16Input.gen_input_file(params_cp, path_prefix, fchk_name='t1.fchk')
-            result = subprocess.run(['g16', 't1_ground_single.com'], capture_output=True, text=True)
-            result = subprocess.run(['formchk', 't1_ground_single.chk', 't1_ground_single.fchk'], capture_output=True, text=True)
+            g16_job=G16Input.gen_input_file_and_return_self(params_cp, path_prefix, fchk_name='t1.fchk')
+            g16_job.run()
         except Exception as e:
             logging.error(f'Error running t1: {e}')
 
@@ -115,16 +106,15 @@ def run_fp(params:Params, path_prefix:Path=path_prefix)->Any:
             params_cp = copy.deepcopy(params)
             params_cp.title = 's0'
             params_cp.opt = True
-            G16Input.gen_input_file(params_cp, path_prefix)
-            result = subprocess.run(['g16', 's0.com'], capture_output=True, text=True)
-            result = subprocess.run(['formchk', 's0.chk', 's0.fchk'], capture_output=True, text=True)
+            g16_job=G16Input.gen_input_file_and_return_self(params_cp, path_prefix)
+            g16_job.run()
             
             # s1态的单点计算
             params_cp = copy.deepcopy(params)
             params_cp.title = 's1_single'
             params_cp.td = 30
-            G16Input.gen_input_file(params_cp, path_prefix, fchk_name='s0.fchk')
-            result = subprocess.run(['g16', 's1_single.com'], capture_output=True, text=True)
+            g16_job=G16Input.gen_input_file_and_return_self(params_cp, path_prefix, fchk_name='s0.fchk')
+            g16_job.run()
         except Exception as e:
             logging.error(f'Error running absorption_spec: {e}')
 
@@ -134,17 +124,16 @@ def run_fp(params:Params, path_prefix:Path=path_prefix)->Any:
             params_cp = copy.deepcopy(params)
             params_cp.title = 's0'
             params_cp.opt = True
-            result = subprocess.run(['g16', 's0.com'], capture_output=True, text=True)
-            result = subprocess.run(['formchk', 's0.chk', 's0.fchk'], capture_output=True, text=True)
+            g16_job=G16Input.gen_input_file_and_return_self(params_cp, path_prefix)
+            g16_job.run()
 
             # 生成s1态的单点计算
             params_cp = copy.deepcopy(params)
             params_cp.title = 's1'
             params_cp.td = 10
             params_cp.opt = True
-            G16Input.gen_input_file(params_cp, path_prefix, fchk_name='s0.fchk')
-            result = subprocess.run(['g16', 's1.com'], capture_output=True, text=True)
-            result = subprocess.run(['formchk', 's1.chk'], capture_output=True, text=True)
+            g16_job=G16Input.gen_input_file_and_return_self(params_cp, path_prefix, fchk_name='s0.fchk')
+            g16_job.run()
 
         except Exception as e:
             logging.error(f'Error running emission_spec: {e}')
