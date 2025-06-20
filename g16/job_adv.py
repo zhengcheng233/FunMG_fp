@@ -226,7 +226,9 @@ def evc_calculator(args:argparse.Namespace):
         subprocess.run(['cp', f'{tmp_pth}/s1_opt.fchk', f'{tmp_pth}/evc_s0s1/s1_opt.fchk'], check=True)
         subprocess.run(['cp', f'{tmp_pth}/s0_opt.log', f'{tmp_pth}/evc_s0s1/s0_opt.log'], check=True)
         subprocess.run(['cp', f'{tmp_pth}/s1_opt.log', f'{tmp_pth}/evc_s0s1/s1_opt.log'], check=True)
-        evc_s0s1 = ['do_evc=1', '', '&evc', ' ffreq(1) = "s0_opt.log"', ' ffreq(2) = "s1_opt.log"', '/']
+        subprocess.run(['cp', f'{tmp_pth}/nacme.log', f'{tmp_pth}/evc_s0s1/nacme.log'], check=True)
+        subprocess.run(['cp', f'{tmp_pth}/nacme.fchk', f'{tmp_pth}/evc_s0s1/nacme.fchk'], check=True)
+        evc_s0s1 = ['do_evc=1', '', '&evc', ' ffreq(1) = "s0_opt.log"', ' ffreq(2) = "s1_opt.log"', ' fnacme = "nacme.log"', '/']
         with open(Path(tmp_pth, 'evc_s0s1', 'momap.inp'), 'w') as f:
             f.write('%s' % '\n'.join(evc_s0s1))
             f.write('\n')
@@ -276,32 +278,34 @@ def kr_calculator(args:argparse.Namespace):
     if electronic_state == 's0-s1':
         e_s0 = result['e_s0_s0']; e_s1 = result['e_s1_td']
         E_s0s1 = e_s1[0] - e_s0[0]  # s0-s1的能量差
-        kr = ['do_spec_tvcf_ft=1', 'do_spec_tvcf_spec=1', '&spec_tvcf', 'DUSHIN = .f.', 'Temp = 300 K', \
+        kr_com = ['do_spec_tvcf_ft=1', 'do_spec_tvcf_spec=1', '&spec_tvcf', 'DUSHIN = .f.', 'Temp = 300 K', \
       'tmax = 7500 fs', 'dt = 0.025 fs', 'debug = .t.', 'isgauss = .f.', 'BroadenType = "lorentzian"', \
       'GFile = "ic.tvcf.gauss.dat"', 'BroadenFunc = "time"', f'Ead = {E_s0s1} au', \
       f'EDMA = {edma} debye', f'EDME = {edme} debye', 'FreqScale = 1.0', 'DSFile = "evc.dint.dat"',\
       'Emax = 0.3 au','dE = 0.00001 au','logFile = "spec.tvcf.log"','FtFile = "spec.tvcf.ft.dat"',\
       'FoFile = "spec.tvcf.fo.dat"','FoSFile = "spec.tvcf.spec.dat"','/']
-        knr = ['do_ic_tvcf_ft = 1', 'do_ic_tvcf_spec = 1', '&ic_tvcf', 'DUSHIN = .f.', 'Temp = 300 K',\
+        knr_com = ['do_ic_tvcf_ft = 1', 'do_ic_tvcf_spec = 1', '&ic_tvcf', 'DUSHIN = .f.', 'Temp = 300 K',\
        'tmax = 7500 fs', 'isgauss = .t.', 'BroadenType = "lorentzian"', 'GFile = "ic.tvcf.gauss.dat"',\
        'FWHM = 10 cm-1','BroadenFunc = "time"','dt = 0.025 fs', 'debug = .t.',f'Ead = {E_s0s1} au', \
-       'DSFile = "evc.dint.dat"','CoulFile = "evc.cart.nac"','Emax = 0.3 au','logFile = "ic.tvcf.log"',\
+       'DSFile = "evc.dint.dat"', "CoulFile = evc.cart.nac", 'Emax = 0.3 au','logFile = "ic.tvcf.log"',\
        'FtFile = "ic.tvcf.ft.dat"','FoFile = "ic.tvcf.fo.dat"','/']
         # 运行kr 
         try:
             os.makedirs(Path(tmp_pth, 'kr'), exist_ok=True)
             with open(Path(tmp_pth, 'kr', 'momap.inp'), 'w') as f:
-                f.write('%s' % '\n'.join(kr))
+                f.write('%s' % '\n'.join(kr_com))
+                f.write('\n')
             os.system('cp evc_s0s1/evc.dint.dat kr/') if os.path.exists(Path(tmp_pth, 'evc_s0s1', 'evc.dint.dat')) \
                 else os.system('cp evc_s0s1/evc.cart.dat kr/evc.dint.dat')
             os.system('cd kr && momap -i momap.inp -n %d' % nproc)
             # 运行knr 
             os.makedirs(Path(tmp_pth, 'knr'), exist_ok=True)
             with open(Path(tmp_pth, 'knr', 'momap.inp'), 'w') as f:
-                f.write('%s' % '\n'.join(knr))
+                f.write('%s' % '\n'.join(knr_com))
                 f.write('\n')
             os.system('cp evc_s0s1/evc.dint.dat knr/') if os.path.exists(Path(tmp_pth, 'evc_s0s1', 'evc.dint.dat')) \
                 else os.system('cp evc_s0s1/evc.cart.dat knr/evc.dint.dat')
+            os.system('cp evc_s0s1/evc.cart.nac knr/')
             os.system('cd knr && momap -i momap.inp -n %d' % nproc)
             # 收集光谱(1nm左右采集一个,200-1000nm范围, FC_abs, FC_emi为强度)，速率常数
             wavelength = []; abs_strength = []; emi_strength = []
@@ -334,7 +338,7 @@ def kr_calculator(args:argparse.Namespace):
     elif electronic_state == 's0-t1':
         e_s0 = result['e_s0_s0']; e_t1 = result['e_t1_s0']
         E_s0t1 = e_t1[0] - e_s0[0]; soc_s0t1 = result['soc1']
-        knrt = ['do_isc_tvcf_ft=1','do_isc_tvcf_spec=1','&isc_tvcf','DUSHIN = .f.','Temp = 298 K',\
+        knrt_com = ['do_isc_tvcf_ft=1','do_isc_tvcf_spec=1','&isc_tvcf','DUSHIN = .f.','Temp = 298 K',\
         'tmax = 7500 fs','debug = .t.','isgauss = .t.','BroadenType = "lorentzian"',\
         'GFile = "ic.tvcf.gauss.dat"','FWHM = 10 cm-1','BroadenFunc = "time"','dt = 0.025 fs',\
         f'Ead = {E_s0t1} au', f'Hso = {soc_s0t1} cm-1', 'DSFile = "evc.dint.dat"',\
@@ -344,7 +348,8 @@ def kr_calculator(args:argparse.Namespace):
             # 运行knrt (三重态)
             os.makedirs(Path(tmp_pth, 'knrt'), exist_ok=True)
             with open(Path(tmp_pth, 'knrt', 'momap.inp'), 'w') as f:
-                f.write('%s' % '\n'.join(knrt))
+                f.write('%s' % '\n'.join(knrt_com))
+                f.write('\n')
             os.system('cp evc_s0t1/evc.dint.dat knrt/') if os.path.exists(Path(tmp_pth, 'evc_s0t1', 'evc.dint.dat')) \
                 else os.system('cp evc_s0t1/evc.cart.dat knrt/evc.dint.dat')
             os.system('cd knrt && momap -i momap.inp -n %d' % nproc)
@@ -360,7 +365,7 @@ def kr_calculator(args:argparse.Namespace):
     elif electronic_state == 's1-t1':
         e_s1 = result['e_s1_td']; e_t1 = result['e_t1_s0']
         E_s1t1 = e_t1[0] - e_s1[0]; soc_s1t1 = result['soc0']     
-        kisc = ['do_isc_tvcf_ft=1','do_isc_tvcf_spec=1','&isc_tvcf','DUSHIN = .f.','Temp = 298 K',\
+        kisc_com = ['do_isc_tvcf_ft=1','do_isc_tvcf_spec=1','&isc_tvcf','DUSHIN = .f.','Temp = 298 K',\
         'tmax = 7500 fs','debug = .t.','isgauss = .t.','BroadenType = "lorentzian"',\
         'GFile = "ic.tvcf.gauss.dat"','FWHM = 10 cm-1','BroadenFunc = "time"','dt = 0.025 fs',\
         f'Ead = {E_s1t1} au', f'Hso = {soc_s1t1} cm-1','DSFile = "evc.dint.dat"',\
@@ -371,7 +376,8 @@ def kr_calculator(args:argparse.Namespace):
             # 运行kisc (单重态)
             os.makedirs(Path(tmp_pth, 'kisc'), exist_ok=True)
             with open(Path(tmp_pth, 'kisc', 'momap.inp'), 'w') as f:
-                f.write('%s' % '\n'.join(kisc))
+                f.write('%s' % '\n'.join(kisc_com))
+                f.write('\n')
             os.system('cp evc_s1t1/evc.dint.dat kisc/') if os.path.exists(Path(tmp_pth, 'evc_s1t1', 'evc.dint.dat')) \
                 else os.system('cp evc_s1t1/evc.cart.dat kisc/evc.dint.dat')
             os.system('cd kisc && momap -i momap.inp -n %d' % nproc)
@@ -394,7 +400,7 @@ def qchem_single_calculator(args:argparse.Namespace):
     '''
     qchem的单点性质计算, 用于计算s态与t态的耦合, delta Est存在自旋污染，我们不考虑了
     '''
-    gau_2_qchem = {'3-21g':'def2-svp', 'def2svp': 'def2-svp', 'def2tzvp': 'def2-tzvp', 'def2qzvp': 'def2-qzvp', 'b3lyp EmpiricalDispersion=GD3BJ': 'b3lyp'}
+    gau_2_qchem = {'3-21g':'def2-svp', 'def2svp': 'def2-svp', 'def2tzvp': 'def2-tzvp', 'def2qzvp': 'def2-qzvp', 'EmpiricalDispersion=GD3BJ b3lyp': 'b3lyp'}
     in_pth = Path(args.in_pth); out_pth = Path(args.out_pth); tmp_pth = Path(args.tmp_pth)
     nproc = args.nproc; memory = args.memory; method = gau_2_qchem[args.method]; basis = gau_2_qchem[args.basis]
     qchem = args.qchem
@@ -424,7 +430,6 @@ def qchem_single_calculator(args:argparse.Namespace):
             result['soc1'] = soc1
         except Exception as e:
             result['Error'].append(f'soc calculation did not converge: {e}')
-    print(result)
     with open(Path(out_pth, 'result.pkl'), 'wb') as f:
         pickle.dump(result, f)
     return
@@ -437,7 +442,7 @@ def orca_single_calculator():
 
 def gaussian_single_calculator(args:argparse.Namespace):
     '''
-    gaussian 16的单点性质计算
+    gaussian 16的单点性质计算, 需要补一个nacme的计算
     '''
     in_pth = Path(args.in_pth); out_pth = Path(args.out_pth); tmp_pth = Path(args.tmp_pth)
     nproc = args.nproc; memory = args.memory; method = args.method; basis = args.basis
@@ -505,8 +510,24 @@ def gaussian_single_calculator(args:argparse.Namespace):
                     edme = lines[idx + 3].strip().split()[-2]
                     edme = float(edme)**0.5 * 2.5423
             result['edme'] = edme
-            
-        
+
+    elif electronic_state == 'nacme':
+        # nacme 计算
+        f_name = Path(tmp_pth, 'nacme.com')
+        coord_s0 = result['s0opt_coord']; symbol = result['symbol']
+        keywords = [f'%chk=nacme.chk',f'%nproc={nproc}', f'%mem={memory}', \
+                   f'# p td {method}/{basis} prop=(fitcharge,field) iop(6/22=-4,6/29=1,6/30=0,6/17=2) nosymm', '', 'td', '', f'{charge} {multiplicity}']
+        geometry_2_input.geom_2_dircom(f_name, coord_s0, symbol, keywords)
+        subprocess.run(['g16', 'nacme.com'], check=True)
+        f_name = Path(tmp_pth, 's0_opt.com')
+        keywords = [f'%chk=s0_opt.chk',f'%nproc={nproc}', f'%mem={memory}', \
+                     f'# {method}/{basis} freq nosymm', '', 'opt', '', f'{charge} {multiplicity}']
+        coord_s0 = result['s0opt_coord']
+        geometry_2_input.geom_2_dircom(f_name, coord_s0, symbol, keywords)
+        subprocess.run(['g16', 's0_opt.com'], check=True)
+        logging.info(f'Completed NACME calculation for {f_name}')
+        subprocess.run(['formchk', 'nacme.chk'], check=True)
+        subprocess.run(['formchk', 's0_opt.chk'], check=True)
     with open(Path(out_pth, 'result.pkl'), 'wb') as f:
         pickle.dump(result, f)
     return 
@@ -558,6 +579,7 @@ def gen_spectrum_slurm(args:argparse.Namespace):
                       f'python {script_pth} structure_opt --in_pth {f_dir} --out_pth {f_dir} --tmp_pth {tmp_pth}/mol_{idx} --nproc {nproc} --memory {memory} --method "{method}" --basis "{basis}" --charge {charge} --multiplicity {multiplicity} --freq {freq} --electronic_state T1',
                       f'python {script_pth} gau_single_calculator --in_pth {f_dir} --out_pth {f_dir} --tmp_pth {tmp_pth}/mol_{idx} --nproc {nproc} --memory {memory} --method "{method}" --basis "{basis}" --charge {charge} --multiplicity {multiplicity} --electronic_state S0',
                       f'python {script_pth} gau_single_calculator --in_pth {f_dir} --out_pth {f_dir} --tmp_pth {tmp_pth}/mol_{idx} --nproc {nproc} --memory {memory} --method "{method}" --basis "{basis}" --charge {charge} --multiplicity {multiplicity} --electronic_state S1',
+                      f'python {script_pth} gau_single_calculator --in_pth {f_dir} --out_pth {f_dir} --tmp_pth {tmp_pth}/mol_{idx} --nproc {nproc} --memory {memory} --method "{method}" --basis "{basis}" --charge {charge} --multiplicity {multiplicity} --electronic_state nacme',
                       f'python {script_pth} qchem_single_calculator --in_pth {f_dir} --out_pth {f_dir} --tmp_pth {tmp_pth}/mol_{idx} --nproc {nproc} --memory {memory} --method "{method}" --basis "{basis}" --qchem "{q_chem}"'])  
         slurm_txt.extend(momap_env.strip().split(';')) if momap_env else []
         # 如果只需要计算光谱，evcs0s1 & krs0s1既可
@@ -568,7 +590,7 @@ def gen_spectrum_slurm(args:argparse.Namespace):
     return 
 
 def gen_plqy_slurm(args:argparse.Namespace):
-    in_pth = Path(args.in_pth); slurm_task_path = Path(args.slurm_task_path)
+    in_pth = Path(args.in_pth); slurm_task_path = Path(args.slurm_task_pth)
     tmp_pth = Path(args.tmp_pth); g16_env = args.g16_env; platform_env = args.platform_env; qchem_env = args.qchem_env
     script_pth = Path(args.script_pth); nproc = args.nproc; memory = args.memory
     method = args.method; basis = args.basis; charge = args.charge; multiplicity = args.multiplicity
@@ -578,18 +600,19 @@ def gen_plqy_slurm(args:argparse.Namespace):
         f_dir = os.path.dirname(f_name)
         slurm_txt = ['#!/bin/bash', f'{platform_env}', f'#SBATCH -J FunMG_{idx}', '#SBATCH -N 1',\
                     f'#SBATCH -n {nproc}']
-        slurm_txt += [f'mkdir -p {tmp_pth}',f'mkdir -p {tmp_pth}/mol_{idx}']
-        slurm_txt += g16_env if g16_env else []
-        slurm_txt += qchem_env if qchem_env else []
+        slurm_txt.extend([f'mkdir -p {tmp_pth}',f'mkdir -p {tmp_pth}/mol_{idx}'])
+        slurm_txt.extend(g16_env.strip().split(';')) if g16_env else []
+        slurm_txt.extend(qchem_env.strip().split(';')) if qchem_env else []
         
         # 计算工作流调用
-        slurm_txt += [f'cd {tmp_pth}/mol_{idx}',f'python {script_pth} --structure_opt --in_pth {f_dir} --out_pth {f_dir} --tmp_pth {tmp_pth}/mol_{idx} --nproc {nproc} --memory {memory} --method "{method}" --basis "{basis}" --charge {charge} --multiplicity {multiplicity} --freq {freq} --electronic_state S0', 
-                      f'python {script_pth} --structure_opt --in_pth {f_dir} --out_pth {f_dir} --tmp_pth {tmp_pth}/mol_{idx} --nproc {nproc} --memory {memory} --method "{method}" --basis "{basis}" --charge {charge} --multiplicity {multiplicity} --freq {freq} --electronic_state S1',
-                      f'python {script_pth} --structure_opt --in_pth {f_dir} --out_pth {f_dir} --tmp_pth {tmp_pth}/mol_{idx} --nproc {nproc} --memory {memory} --method "{method}" --basis "{basis}" --charge {charge} --multiplicity {multiplicity} --freq {freq} --electronic_state T1',
-                      f'python {script_pth} --gau_single_calculator --in_pth {f_dir} --out_pth {f_dir} --tmp_pth {tmp_pth}/mol_{idx} --nproc {nproc} --memory {memory} --method "{method}" --basis "{basis}" --charge {charge} --multiplicity {multiplicity} --electronic_state S0',
-                      f'python {script_pth} --gau_single_calculator --in_pth {f_dir} --out_pth {f_dir} --tmp_pth {tmp_pth}/mol_{idx} --nproc {nproc} --memory {memory} --method "{method}" --basis "{basis}" --charge {charge} --multiplicity {multiplicity} --electronic_state S1',
-                      f'python {script_pth} --qchem_single_calculator --in_pth {f_dir} --out_pth {f_dir} --tmp_pth {tmp_pth}/mol_{idx} --nproc {nproc} --memory {memory} --method "{method}" --basis "{basis}" --qchem "{q_chem}"']   
-        slurm_txt += momap_env if momap_env else []
+        slurm_txt.extend([f'cd {tmp_pth}/mol_{idx}',f'python {script_pth} structure_opt --in_pth {f_dir} --out_pth {f_dir} --tmp_pth {tmp_pth}/mol_{idx} --nproc {nproc} --memory {memory} --method "{method}" --basis "{basis}" --charge {charge} --multiplicity {multiplicity} --freq {freq} --electronic_state S0', 
+                      f'python {script_pth} structure_opt --in_pth {f_dir} --out_pth {f_dir} --tmp_pth {tmp_pth}/mol_{idx} --nproc {nproc} --memory {memory} --method "{method}" --basis "{basis}" --charge {charge} --multiplicity {multiplicity} --freq {freq} --electronic_state S1',
+                      f'python {script_pth} structure_opt --in_pth {f_dir} --out_pth {f_dir} --tmp_pth {tmp_pth}/mol_{idx} --nproc {nproc} --memory {memory} --method "{method}" --basis "{basis}" --charge {charge} --multiplicity {multiplicity} --freq {freq} --electronic_state T1',
+                      f'python {script_pth} gau_single_calculator --in_pth {f_dir} --out_pth {f_dir} --tmp_pth {tmp_pth}/mol_{idx} --nproc {nproc} --memory {memory} --method "{method}" --basis "{basis}" --charge {charge} --multiplicity {multiplicity} --electronic_state S0',
+                      f'python {script_pth} gau_single_calculator --in_pth {f_dir} --out_pth {f_dir} --tmp_pth {tmp_pth}/mol_{idx} --nproc {nproc} --memory {memory} --method "{method}" --basis "{basis}" --charge {charge} --multiplicity {multiplicity} --electronic_state S1',
+                      f'python {script_pth} gau_single_calculator --in_pth {f_dir} --out_pth {f_dir} --tmp_pth {tmp_pth}/mol_{idx} --nproc {nproc} --memory {memory} --method "{method}" --basis "{basis}" --charge {charge} --multiplicity {multiplicity} --electronic_state nacme',
+                      f'python {script_pth} qchem_single_calculator --in_pth {f_dir} --out_pth {f_dir} --tmp_pth {tmp_pth}/mol_{idx} --nproc {nproc} --memory {memory} --method "{method}" --basis "{basis}" --qchem "{q_chem}"'])
+        slurm_txt.extend(momap_env.strip().split(';')) if momap_env else []
         # 如果只需要计算光谱，evcs0s1 & krs0s1既可
         slurm_txt.extend([f'python {script_pth} evc_calculator --in_pth {f_dir} --out_pth {f_dir} --tmp_pth {tmp_pth}/mol_{idx} --nproc {nproc} --electronic_state s0-s1',
                       f'python {script_pth} evc_calculator --in_pth {f_dir} --out_pth {f_dir} --tmp_pth {tmp_pth}/mol_{idx} --nproc {nproc} --electronic_state s1-t1',
@@ -597,40 +620,46 @@ def gen_plqy_slurm(args:argparse.Namespace):
                       f'python {script_pth} kr_calculator --in_pth {f_dir} --out_pth {f_dir} --tmp_pth {tmp_pth}/mol_{idx} --nproc {nproc} --electronic_state s0-s1',
                       f'python {script_pth} kr_calculator --in_pth {f_dir} --out_pth {f_dir} --tmp_pth {tmp_pth}/mol_{idx} --nproc {nproc} --electronic_state s1-t1',
                       f'python {script_pth} kr_calculator --in_pth {f_dir} --out_pth {f_dir} --tmp_pth {tmp_pth}/mol_{idx} --nproc {nproc} --electronic_state s0-t1'])
-        slurm_txt += [f'rm -rf {tmp_pth}/mol_{idx}'] # 清理临时文件夹
+        slurm_txt.extend([f'rm -rf {tmp_pth}/mol_{idx}']) # 清理临时文件夹
         slurm.genslurm(slurm_txt, f'{slurm_task_path}/FunMG_{idx}.slurm')
     return 
 
 def run_slurm(args:argparse.Namespace):
-    slurm_task_path = Path(args.slurm_task_path)
+    slurm_task_path = Path(args.slurm_task_pth)
     for slurm_file in slurm_task_path.glob('*.slurm'):
         os.system(f'cd {slurm_task_path} && sbatch {slurm_file}')
+    os.system(f'rm -rf {slurm_task_path}')  # 清理slurm文件夹
     return 
 
 def collect_data(args:argparse.Namespace):
     in_pth = Path(args.in_pth); task_type = args.task_type; out_pth = Path(args.out_pth)
     # 保存为lmdb 
-    f_files = glob(f'{in_pth}/*/result.pkl')
+    f_files = glob(f'{out_pth}/*/result.pkl')
     results = []
     for f_name in f_files:
-        with open(f_name, 'r') as f:
-            key = os.path.basename(os.path.dirname(f_name))
-            df = pickle.load(f)
-            error = df['Error'].tolist() if 'Error' in df.keys else []
-            if len(error) == 0:
-                if task_type == 'plqy':
-                    kr = df['kr'].tolist()[0]; knr = df['knr'].tolist()[0]; kisc = df['kisc'].tolist()[0]
-                    krisc = df['krisc'].tolist()[0]; knrt = df['knrt'].tolist()[0] 
-                    plqy_pf = kr / (kisc + kr + knr); plqy_isc = kisc / (kisc + kr + knr)
-                    plqy_risc = krisc / (krisc + knrt); plqy_df = (plqy_isc * plqy_risc / (1 - plqy_isc * plqy_risc)) * plqy_pf
-                    plqy = plqy_df + plqy_pf
-                    df['plqy'] = plqy
-                    lifetime_kr = 1/kr if kr != 0 else 0
-                    df['lifetime_kr'] = lifetime_kr
-                    # 或许需要寿命计算，速率常数的倒数
-            results.append((key, df))
+        try:
+            with open(f_name, 'rb') as f:
+                key = os.path.basename(os.path.dirname(f_name))
+                df = pickle.load(f)
+                error = df['Error'] if 'Error' in df.keys() else []
+                if len(error) == 0:
+                    if task_type == 'plqy':
+                        kr = df['kr']; knr = df['knr']; kisc = df['kisc']
+                        krisc = df['krisc']; knrt = df['knrt']
+                        plqy_pf = kr / (kisc + kr + knr); plqy_isc = kisc / (kisc + kr + knr)
+                        plqy_risc = krisc / (krisc + knrt); plqy_df = (plqy_isc * plqy_risc / (1 - plqy_isc * plqy_risc)) * plqy_pf
+                        plqy = plqy_df + plqy_pf
+                        df['plqy'] = plqy
+                        lifetime_kr = 1/kr if kr != 0 else 0
+                        df['lifetime_kr'] = lifetime_kr
+                        # 或许需要寿命计算，速率常数的倒数
+                results.append((key, df))
+        except Exception as e:
+            logging.error(f'Error processing {f_name}: {e}')
+            continue
+        #    continue
     # 保存为pickle 文件
-    outputfilename = Path(out_pth, 'results.lmdb')
+    outputfilename = str(Path(out_pth, 'results.lmdb'))
     env_new = lmdb.open(
             outputfilename,
             subdir=False,
@@ -644,7 +673,7 @@ def collect_data(args:argparse.Namespace):
     txn_write = env_new.begin(write=True)
     for idx, res in enumerate(results):
         key, df = res
-        txn_write.put(key.encode('utf-8'), pickle.dumps(df))
+        txn_write.put(key.encode("ascii"), pickle.dumps(df, protocol=-1))
         if idx % 100 == 0:
             txn_write.commit()
             txn_write = env_new.begin(write=True)
@@ -696,7 +725,7 @@ def main():
     parser_gau_single.add_argument('--basis', type=str, default='def2svp', help='Basis set for optimization')
     parser_gau_single.add_argument('--charge', type=int, default=0, help='Charge of the system')
     parser_gau_single.add_argument('--multiplicity', type=int, default=1, help='Multiplicity of the system')
-    parser_gau_single.add_argument('--electronic_state', type=str, default='S0', choices=['S0', 'S1', 'T1'], help='Electronic state for optimization')
+    parser_gau_single.add_argument('--electronic_state', type=str, default='S0', choices=['S0', 'S1', 'T1', 'nacme'], help='Electronic state for optimization')
 
     # subparser for evc calculation
     parser_evc_calculator = subparsers.add_parser('evc_calculator', help='Run EVC calculation')
@@ -771,7 +800,7 @@ def main():
     
     # subparser for run slurm  
     parser_run_slurm = subparsers.add_parser('run_slurm', help='Run slurm scripts')
-    parser_run_slurm.add_argument('--slurm_task_path', type=str, default='/public/home/chengz/FunMG/task', help='Path for slurm scripts')
+    parser_run_slurm.add_argument('--slurm_task_pth', type=str, default='/public/home/chengz/FunMG/task', help='Path for slurm scripts')
     # subparser for collecting data
     parser_collect_data = subparsers.add_parser('collect_data', help='Collect data from calculation results')
     parser_collect_data.add_argument('--in_pth', type=str, default='/public/home/chengz/FunMG', help='Input path for calculation results')
