@@ -13,7 +13,7 @@ import pandas as pd
 import sys 
 import os 
 sys.path.append(str(Path(__file__).resolve().parent.parent))
-from utils import smi_2_geom, geometry_2_input, slurm 
+from utils import geometry_2_input, smi_2_geom, slurm 
 from ase.data import chemical_symbols
 from glob import glob
 import lmdb 

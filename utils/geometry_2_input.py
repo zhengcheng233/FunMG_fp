@@ -1,6 +1,68 @@
 #!/usr/bin/env python 
 import os 
 
+
+# 基态结构优化，激发态结构优化，基态优化结构td, 基态优化结构单点，激发态优化结构tb 
+# 
+'''
+读取吸收/发射波长
+# 逐行查找包含 "0-1A  ->  1-1A" 的行
+        for line in lines:
+            line = line.strip()
+            if '0-1A' in line and '1-1A' in line and '->' in line:
+                # 分割行数据
+                parts = line.split()
+                if len(parts) >= 6:
+                    try:
+                        # 根据示例：0-1A -> 1-1A 3.621487 29209.3 342.4 0.923193537 ...
+                        # 波长是第6列（索引5），振子强度是第7列（索引6）
+                        wavelength = float(parts[5])  # 342.4
+                        fosc = float(parts[6])        # 0.923193537
+                        print(f"成功提取 {file_path}: 波长={wavelength} nm, fosc={fosc}")
+                        return wavelength, fosc
+                    except (ValueError, IndexError) as e:
+                        print(f"数据转换错误 {file_path}: {e}, 行内容: {line}")
+                        continue
+# 读取基态单点的HOMO,LUMO 
+----------------
+ORBITAL ENERGIES
+----------------
+
+  NO   OCC          E(Eh)            E(eV)
+   0   2.0000     -19.321301      -525.7593
+   1   2.0000     -10.350379      -281.6481
+   2   2.0000      -1.184938       -32.2438
+   3   2.0000      -0.589490       -16.0408
+   4   2.0000      -0.494585       -13.4584
+   5   2.0000      -0.494585       -13.4584
+   6   2.0000      -0.387657       -10.5487
+   7   0.0000      -0.018097        -0.4925
+   8   0.0000      -0.018097        -0.4925
+   9   0.0000       0.233308         6.3486
+  10   0.0000       0.415785        11.3141
+  11   0.0000       0.476212        12.9584
+  12   0.0000       0.476212        12.9584
+  13   0.0000       0.750485        20.4217
+  14   0.0000       0.862433        23.4680
+  15   0.0000       0.970045        26.3963
+  16   0.0000       0.970045        26.3963
+  17   0.0000       1.260603        34.3027
+'''
+
+
+def geom_2_inp(f_name, coord, symbol, keywords):
+    if keywords is None:
+        keywords = ['! opt PBE0 d4 def2-svp def2/J RIJCOSX tightSCF CPCM(Toluene)', '', '* xyz 0 1']
+    os.makedirs(os.path.dirname(f_name), exist_ok=True)
+    with open(f'{f_name}', 'w') as f:
+        for key in keywords:
+            f.write(f"{key}\n")
+        for i in range(len(coord)):
+            f.write('%s %.6f %.6f %.6f\n' % (symbol[i], coord[i][0], coord[i][1], coord[i][2]))
+        f.write('*\n')
+    return
+        
+
 def geom_2_com(f_name, coord, symbol, keywords):
     if keywords is None:
         keywords = ['# pm6', '', 'geom', '', '0 1']
