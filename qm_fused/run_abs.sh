@@ -1,0 +1,20 @@
+python /public/home/chengz/photomat/fs_users/multimodal__rela/FunMG_fp/qm_fused/job_abs.py spectrum \
+    --in_pth '/public/home/chengz/photomat/fs_projects/finetune/opv_realmol/qm_calc' \
+    --slurm_task_pth '/public/home/chengz/photomat/fs_projects/finetune/opv_realmol/task' \
+    --tmp_pth '/tmp/scratch/zhengcheng/FunMG_$SLURM_JOB_ID' \
+    --out_pth '/public/home/chengz/photomat/fs_projects/finetune/opv_realmol/qm_calc' \
+    --orca_script_pth '/public/home/chengz/photomat/fs_users/multimodal__rela/FunMG_fp/orca/job_adv.py' \
+    --gau_script_pth '/public/home/chengz/photomat/fs_users/multimodal__rela/FunMG_fp/g16/job_adv.py' \
+    --script_pth '/public/home/chengz/photomat/fs_users/multimodal__rela/FunMG_fp/qm_fused/job.py' \
+    --soft_env 'module purge;source /public/home/chengz/apprepo/orca/6.0.1-openmpi416_gcc930/scripts/env.sh;export GAUSS_SCRDIR=/tmp/scratch/zhengcheng/FunMG_$SLURM_JOB_ID' \
+    --platform_env '#SBATCH -p kshcnormal' \
+    --nproc 30 \
+    --orca_sov 0 \
+    --basis 'def2svp' \
+    --charge 0 \
+    --multiplicity 1 \
+    --freq True \
+    --mem '50GB' \
+    --gau_sov 0 \
+    --orca_method 'B3LYP' \
+    --gau_method 'B3LYP'

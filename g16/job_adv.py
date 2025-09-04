@@ -84,7 +84,7 @@ def opt_calculator(args:argparse.Namespace):
     in_pth = Path(args.in_pth); out_pth = Path(args.out_pth); tmp_pth = Path(args.tmp_pth)
     nproc = args.nproc; memory = args.memory; method = args.method; basis = args.basis
     charge = args.charge; multiplicity = args.multiplicity; freq = args.freq
-    electronic_state = args.electronic_state
+    electronic_state = args.electronic_state; sov = args.sov
     if os.path.exists(f'{out_pth}/result.pkl'):
         with open(Path(out_pth, 'result.pkl'), 'rb') as f:
             result = pickle.load(f)
@@ -95,13 +95,20 @@ def opt_calculator(args:argparse.Namespace):
         method = f'td {method}'
     if freq == True:
         keywords = [f'%chk={electronic_state.lower()}_opt.chk', f'%nproc={nproc}', f'%mem={memory}', \
-               f'# {method}/{basis} opt freq', '', 'opt', '', f'{charge} {multiplicity}']
+               f'# {method}/{basis} opt freq empiricaldispersion=gd3bj', '', 'opt', '', f'{charge} {multiplicity}']
     else:
         keywords = [f'%chk={electronic_state.lower()}_opt.chk', f'%nproc={nproc}', f'%mem={memory}', \
-               f'# {method}/{basis} opt', '', 'opt', '', f'{charge} {multiplicity}']
+               f'# {method}/{basis} opt empiricaldispersion=gd3bj', '', 'opt', '', f'{charge} {multiplicity}']
+
     if electronic_state == 'S0':
-        coord, symbol = geometry_2_input.read_geom(Path(in_pth, 'input.com'))
-        coord = np.array(coord) 
+        with open(Path(out_pth, 'result.pkl'), 'rb') as f:
+            data = pickle.load(f)
+            if 'coord_init' in data.keys() or 'init_coord' in data.keys():
+                coord = data.get('coord_init', data.get('init_coord', None))
+                symbol = data.get('symbol', None)
+            else:
+                coord, symbol = geometry_2_input.read_geom(Path(in_pth, 'input.com'))
+                coord = np.array(coord) 
     else:
         # s1 & t1的初始结构均基于s0 opt 
         # 直接从csv中读取
@@ -114,6 +121,8 @@ def opt_calculator(args:argparse.Namespace):
     result['symbol'] = symbol
     if electronic_state == 'S0':
         f_name = Path(tmp_pth, 's0_opt.com')
+        if 's0opt_coord' in data.keys():
+            coord = data['s0opt_coord']
         geometry_2_input.geom_2_dircom(f_name, coord, symbol, keywords)
         logging.info(f'Generated input file for S0 optimization: {f_name}')
         # 调用高斯计算
@@ -127,6 +136,9 @@ def opt_calculator(args:argparse.Namespace):
             n_occu_orbital = fchic.deck_load(f, "Number of electrons")[0] // 2
             e_orbital = fchic.deck_load(f, "Alpha MO coefficients")
             homo = e_orbital[n_occu_orbital - 1]; lumo = e_orbital[n_occu_orbital]
+            if freq == True:
+                hessian = fchic.deck_load(f, 'Cartesian Force Constants')
+                result['hessian_S0'] = hessian 
 
         result['xtbopt_coord'] = coord
         result['e_s0_s0'] = s0_e  # 保存s0态的基态的能量 
@@ -147,6 +159,8 @@ def opt_calculator(args:argparse.Namespace):
 
     elif electronic_state == 'S1':
         f_name = Path(tmp_pth, 's1_opt.com')
+        if 's1opt_coord' in data.keys():
+            coord = data['s1opt_coord']
         geometry_2_input.geom_2_dircom(f_name, coord, symbol, keywords)
         logging.info(f'Generated input file for S1 optimization: {f_name}')
         # 调用高斯计算
@@ -156,6 +170,9 @@ def opt_calculator(args:argparse.Namespace):
         with open(Path(tmp_pth, 's1_opt.fchk'), 'r') as f:
             s1_e = fchic.deck_load(f, "Total Energy")
             coord_s1 = np.array(fchic.deck_load(f, "Current cartesian coordinates")).reshape((-1,3)) * 0.529177249
+            if freq == True:
+                hessian = fchic.deck_load(f, 'Cartesian Force Constants')
+                result['hessian_S1'] = hessian
         result['e_s1_td'] = s1_e  # 保存s1态的基态的能量
         result['s1opt_coord'] = coord_s1
         result['virtual_freq'] = True
@@ -174,6 +191,8 @@ def opt_calculator(args:argparse.Namespace):
 
     elif electronic_state == 'T1':
         f_name = Path(tmp_pth, 't1_opt.com')
+        if 't1opt_coord' in data.keys():
+            coord = data['t1opt_coord']
         geometry_2_input.geom_2_dircom(f_name, coord, symbol, keywords)
         logging.info(f'Generated input file for T1 optimization: {f_name}')
         # 调用高斯计算
@@ -184,6 +203,9 @@ def opt_calculator(args:argparse.Namespace):
             # t1 计算采用0 3 
             t1_e = fchic.deck_load(f, "SCF Energy")
             coord_t1 = np.array(fchic.deck_load(f, "Current cartesian coordinates")).reshape((-1,3)) * 0.529177249
+            if freq == True:
+                hessian = fchic.deck_load(f, 'Cartesian Force Constants')
+                result['hessian_T1'] = hessian
         result['t1opt_coord'] = coord_t1
         result['e_t1_s0'] = t1_e  # 保存t1态的基态的能量; 
         result['virtual_freq'] = True
@@ -434,11 +456,6 @@ def qchem_single_calculator(args:argparse.Namespace):
         pickle.dump(result, f)
     return
 
-def orca_single_calculator():
-    '''
-    orca软件的单点性质计算，暂时未用到
-    '''
-    return 
 
 def gaussian_single_calculator(args:argparse.Namespace):
     '''
@@ -447,7 +464,7 @@ def gaussian_single_calculator(args:argparse.Namespace):
     in_pth = Path(args.in_pth); out_pth = Path(args.out_pth); tmp_pth = Path(args.tmp_pth)
     nproc = args.nproc; memory = args.memory; method = args.method; basis = args.basis
     charge = args.charge; multiplicity = args.multiplicity
-    electronic_state = args.electronic_state
+    electronic_state = args.electronic_state; sov = args.sov
     if os.path.exists(f'{out_pth}/result.pkl'):
         with open(Path(out_pth, 'result.pkl'), 'rb') as f:
             result = pickle.load(f)
@@ -455,8 +472,10 @@ def gaussian_single_calculator(args:argparse.Namespace):
         result = {}
     # s0_td / s1_td 计算 
     keywords = [f'%chk={electronic_state.lower()}_td.chk',f'%nproc={nproc}', f'%mem={memory}', \
-                   f'# td {method}/{basis}', '', 'td', '', f'{charge} {multiplicity}']
+                   f'# td {method}/{basis} empiricaldispersion=gd3bj', '', 'td', '', f'{charge} {multiplicity}']
     if electronic_state == 'S0':
+        keywords = [f'%chk={electronic_state.lower()}_td.chk',f'%nproc={nproc}', f'%mem={memory}', \
+                   f'# TDA(50-50,NStates=3,Root=1) PBEpbe/def2svp IOP(3/76=1000003333) Iop(3/77=0666706667)', '', 'td', '', f'0 1']
         f_name = Path(tmp_pth, 's0_td.com')
         coord = result['s0opt_coord'] 
         symbol = result['symbol']
@@ -511,6 +530,22 @@ def gaussian_single_calculator(args:argparse.Namespace):
                     edme = float(edme)**0.5 * 2.5423
             result['edme'] = edme
 
+    elif electronic_state == 'T1':
+        keywords = [f'%chk={electronic_state.lower()}_td.chk',f'%nproc={nproc}', f'%mem={memory}', \
+                   f'# TDA(triplet,NStates=3,Root=1) PBEpbe/def2svp IOP(3/76=1000003333) Iop(3/77=0666706667)', '', 'td', '', f'0 1']
+        f_name = Path(tmp_pth, 't1_td.com')
+        coord = result['t1opt_coord']
+        symbol = result['symbol']
+        geometry_2_input.geom_2_dircom(f_name, coord, symbol, keywords)
+        subprocess.run(['g16', 't1_td.com'], check=True)
+        logging.info(f'Completed T1 TD calculation for {f_name}')
+        subprocess.run(['formchk', 't1_td.chk'], check=True)
+        with open(Path(tmp_pth, 't1_td.fchk'), 'r') as f:
+            e_t1_td = fchic.deck_load(f, "Total Energy")
+            e_t1_s0 = fchic.deck_load(f, "SCF Energy")
+        result['e_t1_td'] = e_t1_td
+        result['e_t1_s0'] = e_t1_s0
+        
     elif electronic_state == 'nacme':
         # nacme 计算
         f_name = Path(tmp_pth, 'nacme.com')
@@ -702,6 +737,7 @@ def main():
     parser_structure_opt.add_argument('--multiplicity', type=int, default=1, help='Multiplicity of the system')
     parser_structure_opt.add_argument('--freq', type=bool, default=True, help='Whether to perform frequency analysis after optimization')
     parser_structure_opt.add_argument('--electronic_state', type=str, default='S0', choices=['S0', 'S1', 'T1'], help='Electronic state for optimization')
+    parser_structure_opt.add_argument('--sov', type=str, default=False, help='Whether to use SOV for optimization')
     
     # subparser for qchem single point calculation
     parser_qchem_single = subparsers.add_parser('qchem_single_calculator', help='Run single point calculation using Q-Chem')
@@ -726,6 +762,7 @@ def main():
     parser_gau_single.add_argument('--charge', type=int, default=0, help='Charge of the system')
     parser_gau_single.add_argument('--multiplicity', type=int, default=1, help='Multiplicity of the system')
     parser_gau_single.add_argument('--electronic_state', type=str, default='S0', choices=['S0', 'S1', 'T1', 'nacme'], help='Electronic state for optimization')
+    parser_gau_single.add_argument('--sov', type=str, default=False, help='Whether to use SOV for optimization')
 
     # subparser for evc calculation
     parser_evc_calculator = subparsers.add_parser('evc_calculator', help='Run EVC calculation')

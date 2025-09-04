@@ -1,0 +1,20 @@
+python /public/home/chengz/photomat/fs_users/multimodal__rela/FunMG_fp/qm_fused/job.py phosphor_slurm \
+    --in_pth '/public/home/chengz/photomat/fs_projects/shangjiao_orca/qmcalc' \
+    --slurm_task_pth '/public/home/chengz/photomat/fs_projects/shangjiao_orca/task' \
+    --tmp_pth '/tmp/scratch/zhengcheng/FunMG_$SLURM_JOB_ID' \
+    --out_pth '/public/home/chengz/photomat/fs_projects/shangjiao_orca/qmcalc' \
+    --orca_script_pth '/public/home/chengz/photomat/fs_users/multimodal__rela/FunMG_fp/orca/job_adv.py' \
+    --gau_script_pth '/public/home/chengz/photomat/fs_users/multimodal__rela/FunMG_fp/g16/job_adv.py' \
+    --script_pth '/public/home/chengz/photomat/fs_users/multimodal__rela/FunMG_fp/qm_fused/job.py' \
+    --soft_env 'module purge;source /public/home/chengz/apprepo/orca/6.0.1-openmpi416_gcc930/scripts/env.sh;export GAUSS_SCRDIR=/tmp/scratch/zhengcheng/FunMG_$SLURM_JOB_ID' \
+    --platform_env '#SBATCH -p kshcnormal' \
+    --nproc 30 \
+    --orca_sov '"CPCM(Toluene)"' \
+    --basis 'def2-svp' \
+    --charge 0 \
+    --multiplicity 1 \
+    --freq True \
+    --mem 50GB \
+    --orca_method 'B3LYP' \
+    --gau_sov 'scrf=solvent=Toluene' \
+    --gau_method 'B3LYP' 

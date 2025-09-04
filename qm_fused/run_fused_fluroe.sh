@@ -1,0 +1,20 @@
+python /public/home/chengz/photomat/fs_users/multimodal__rela/FunMG_fp/qm_fused/job.py fluroe_and_kr_slurm \
+    --in_pth '/public/home/chengz/photomat/fs_projects/tii_stage4/qm_calc' \
+    --slurm_task_pth '/public/home/chengz/photomat/fs_projects/tii_stage4/task' \
+    --tmp_pth '/tmp/scratch/zhengcheng/FunMG_$SLURM_JOB_ID' \
+    --out_pth '/public/home/chengz/photomat/fs_projects/tii_stage4/qm_calc' \
+    --orca_script_pth '/public/home/chengz/photomat/fs_users/multimodal__rela/FunMG_fp/orca/job_adv.py' \
+    --gau_script_pth '/public/home/chengz/photomat/fs_users/multimodal__rela/FunMG_fp/g16/job_adv.py' \
+    --script_pth '/public/home/chengz/photomat/fs_users/multimodal__rela/FunMG_fp/qm_fused/job.py' \
+    --soft_env 'module purge;source /public/home/chengz/apprepo/orca/6.0.1-openmpi416_gcc930/scripts/env.sh;export GAUSS_SCRDIR=/tmp/scratch/zhengcheng/FunMG_$SLURM_JOB_ID' \
+    --platform_env '#SBATCH -p kshcnormal' \
+    --nproc 30 \
+    --orca_sov "CPCM(Toluene)" \
+    --basis 'def2svp' \
+    --charge 0 \
+    --multiplicity 1 \
+    --freq True \
+    --method 'PBE0' \
+    --gau_sov "scrf=solvent=Toluene" \
+    --orca_method PBE0 \
+    --gau_method PBE1PBE
